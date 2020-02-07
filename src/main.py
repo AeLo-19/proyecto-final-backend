@@ -7,7 +7,7 @@ from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
-from models import db
+from models import db, User, Paciente, Doctor, Cita, Tratamiento
 #from models import Person
 
 app = Flask(__name__)
@@ -17,6 +17,35 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 MIGRATE = Migrate(app, db)
 db.init_app(app)
 CORS(app)
+
+@app.route("/login", methods=["POST"])
+def handle_login(email, password):
+    headers = {
+        "Content-Type": "application/json"
+    }
+    requesting_login_paciente = Paciente.query.filter_by(email=email, password=password).all()
+    requesting_login_doctor = Doctor.query.filter_by(email=email, password=password).all()
+    if request.method == "POST":
+        print("Hola estoy empezando a hacer la consulta!")
+        if len(requesting_login_doctor) > 0:
+            print("El perfil si existe! puede seguir")
+            response_body = {
+                "status": "HTTP_200_OK. Adelante."
+            }
+            status_code = 200
+        elif len(requesting_login_paciente) > 0:
+            print("El perfil si existe! puede seguir")
+            response_body = {
+                "status": "HTTP_200_OK. Adelante."
+            }
+            status_code = 200
+        else:
+            print("El perfil no existe por favor revise los datos")
+            response_body={
+                "status": "HTTP_404_NOT_FOUND. El perfil no se encuantra registrado"
+            }
+            status_code = 400
+
 
 # Handle/serialize errors like a JSON object
 @app.errorhandler(APIException)
