@@ -2,7 +2,8 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 import os
-from flask import Flask, request, jsonify, url_for
+import json
+from flask import Flask, request, jsonify, url_for, make_response
 from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
@@ -60,10 +61,9 @@ def handle_register():
 
             if validate_email_syntax(new_user_data["email"]):
 
-                new_paciente = Paciente(new_user_data["name"], new_user_data["lastname"], new_user_data["email"], new_user_data["phone"], new_user_data["cedula"])
+                new_paciente = Paciente(new_user_data["name"], new_user_data["lastname"], new_user_data["email"], new_user_data["phone"], new_user_data["cedula"], new_user_data["password"])
 
-                if new_paciente.set_birth_date(new_user_data["dateOfBirth"]) and new_user_data["password"]:
-                    new_paciente.set_password(new_user_data["password"])
+                if new_paciente.set_birth_date(new_user_data["dateOfBirth"]):
                     db.session.add(new_paciente)
                     try:
                         db.session.commit()
@@ -110,6 +110,45 @@ def handle_register():
         headers
     )
 
+@app.route("/<user_id>/cita", methods=["POST", "GET"])
+def handle_cita(user_id):
+    headers = {
+        "Content-Type": "application/json"
+    }
+    if request.method == "POST":
+        new_cita_data = request.json
+        if set(("date", "state", "tratamiento_value")).issubset(new_cita_data):
+
+            new_cita_date = new_cita_data["date"]
+            new_cita_state = new_cita_data["state"]
+            new_cita_tratamiento = new_cita_data["tratamiento_value"]
+            if (new_cita_date != "" and new_cita_state != "" and new_cita_tratamiento != "" ):
+                new_cita = Cita(new_cita_date, new_cita_state, new_cita_tratamiento)
+
+                db.session.add(new_cita)
+                try:
+                    db.session.commit()
+                    status_code = 201
+                    result = f"HTTP_201_CREATED. Cita creada efectivamente con el id {new_cita.id}"
+                    response_body = {
+                        "result": result
+                    }
+                except:
+                    db.session.rollback()
+                    status_code = 500
+                    response_body = {
+                        "result": "Algo ha salido mal."
+                    }
+            else:
+                status_code = 400
+                response_body = {
+                    "result": "HTTP_400_BAD_REQUEST. some value empty"
+                    }
+        else:
+            status_code = 400
+            response_body = {
+                "resultado": "HTTP_400_BAD_REQUEST. some key is empty"
+            } 
     
     # if len(creating_user) > 0:
     #     user_id = creating_user[0].id

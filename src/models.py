@@ -1,18 +1,30 @@
 from flask_sqlalchemy import SQLAlchemy
-
+from dateutil.parser import parse
+from dateutil.relativedelta import relativedelta
+from utils import parse_time_of_day
+from datetime import datetime, time
 db = SQLAlchemy()
 
 class User(db.Model):
     __abstract__=True
     name = db.Column(db.String(80), unique=False, nullable=False)
     lastname = db.Column(db.String(80), unique=False, nullable=False)
-    email = db.Column(db.String(250), unique=True, nullable=False)
-    password = db.Column(db.String(50), unique=False, nullable=False)
+    email = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(150), unique=False, nullable=False)
     date_of_birth = db.Column(db.Date, unique=False, nullable=False)
-    phone = db.Column(db.String(50), unique=False, nullable=False)
-    cedula = db.Column(db.String(50), unique=True, nullable=False)
-
+    cedula = db.Column(db.String(80), unique=True, nullable=False)
+    phone = db.Column(db.String(80), unique=True, nullable=False)
+    
     def set_birth_date(self, date):
+        try:
+            self.date_of_birth = parse(date)
+            # enforce age rules for user object creation
+            if self.date_of_birth <= datetime.now() - relativedelta(years=18):
+                return True
+            else:
+                return False
+        except ValueError:
+            return False
         
     # def __repr__(self):
     #     return  '<User %r>' % self.username
@@ -22,17 +34,19 @@ class User(db.Model):
 
     
     
-class Paciente(User):
+class Paciente(User) :
     __tablename_ = 'paciente'
     id = db.Column(db.Integer, primary_key=True)
     citas = db.relationship('Cita', backref='paciente', lazy=True)
 
-    def __init__(self, name, lastname, email, phone, cedula):
+    def __init__(self, name, lastname, email, phone, cedula, password):
         self.name = name.strip()
         self.lastname = lastname.strip()
         self.email = email.strip()
+        self.password = password.strip()
         self.phone = phone.strip()
         self.cedula = cedula.strip()
+        
 
 
 class Doctor(User):
@@ -69,7 +83,7 @@ class Tratamiento(db.Model):
     tratamiento_name = db.Column(db.String(125), unique=True, nullable=False)
     descripcion = db.Column(db.String(500), unique=True, nullable=True)
     price = db.Column(db.Integer, unique=False, nullable=False)
-    cita_id = db.Column(db.Integer, db.ForeignKey('cita.id'))
+    # cita_id = db.Column(db.Integer, db.ForeignKey('cita.id'))
 
     def __init__(self, tratamiento_name, descripcion, price):
         self.tratamiento_name = tratamiento_name.strip()
