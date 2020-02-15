@@ -120,10 +120,10 @@ def handle_cita(user_id):
         if set(("date", "state", "tratamiento_value")).issubset(new_cita_data):
 
             new_cita_date = new_cita_data["date"]
-            new_cita_state = new_cita_data["state"]
+            # new_cita_state = new_cita_data["state"]   new_cita_state != ""  new_cita_state
             new_cita_tratamiento = new_cita_data["tratamiento_value"]
-            if (new_cita_date != "" and new_cita_state != "" and new_cita_tratamiento != "" ):
-                new_cita = Cita(new_cita_date, new_cita_state, new_cita_tratamiento)
+            if (new_cita_date != "" and  and new_cita_tratamiento != "" ):
+                new_cita = Cita(new_cita_date,, new_cita_tratamiento)
 
                 db.session.add(new_cita)
                 try:
