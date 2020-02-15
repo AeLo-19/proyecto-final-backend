@@ -149,38 +149,53 @@ def handle_cita(user_id):
             response_body = {
                 "resultado": "HTTP_400_BAD_REQUEST. some key is empty"
             } 
-    
-    # if len(creating_user) > 0:
-    #     user_id = creating_user[0].id
-    # else : 
-    #     user_id = None
 
-    # if request.method == 'POST':
+@app.route("/tratamiento", methods=["POST", "GET"])
+def handle_tratamiento():
+    headers ={
+        "Content-Type": "application/json"
+    }
+    if request.method == "POST":
+        new_tratamiento_data = request.json
 
-    #     print("Iniciando el POST de registro")
+        if set(("tratamiento_name", "descripcion", "price")).issubset(new_tratamiento_data):
+            new_tratamiento_name = new_tratamiento_data["tratamiento_name"]
+            new_tratamiento_descripcion = new_tratamiento_data["descripcion"]
+            new_tratamiento_price = new_tratamiento_data["price"]
+            if(len(new_tratamiento_name) > 0 and len(new_tratamiento_descripcion) > 0 and len(new_tratamiento_price) > 0):
+                new_tratamiento = Tratamiento(new_tratamiento_name, new_tratamiento_descripcion, new_tratamiento_price)
 
-    #     if user_id:
+                db.session.add(new_tratamiento)
+                try:
 
-    #         response_body = {
-    #             "status": "HTTP_400_BAD_REQUEST. Ya existe ese usuario"
-    #         }
-    #         status_code = 400
-        
-    #     if:
-    #         print("Creando usuario")
-    #         user_data = request.json
-    #         new_user = Paciente(user_data["name"], user_data["lastname"] user_data["email"], user_data["password"], user_data["date_of_birth"], user_data["phone"], user_data["cedula"])
-    #         db.session.add(new_user)
-    #         db.session.commit()
-    #         response_body = {
-    #             "status": "todo ok"
-    #         }
-    #         status_code = 200
-    # return make_response(
-    #     jsonify(response_body),
-    #     status_code,
-    #     headers
-    # )
+                    db.session.commit()
+                    status_code = 201
+                    result = f"HTTP_201_CREATED.el  tratamiento ha sido guardado de forma efectiva con el siguiente id: {new_tratamiento.id}"
+                    response_body = {
+                    "result": result
+                    }
+                except:
+                    db.session.rollback()
+                    status_code = 500
+                    response_body = {
+                        "result": "algo salió mal"
+                    }
+            else:
+                status_code = 400
+                response_body = {
+                    "result": "HTTP_400_BAD_REQUEST. Algun input se encuentra vacío"
+                }
+    else: 
+        status_code = 400
+        response_body = {
+            "result": "HTTP_400_BAD_REQUEST. no json data to register"
+        }
+    return make_response(
+        json.dumps(response_body),
+        status_code,
+        headers
+    )
+
 
 
 

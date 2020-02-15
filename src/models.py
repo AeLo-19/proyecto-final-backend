@@ -82,8 +82,8 @@ class Tratamiento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tratamiento_name = db.Column(db.String(125), unique=True, nullable=False)
     descripcion = db.Column(db.String(500), unique=True, nullable=True)
-    price = db.Column(db.Integer, unique=False, nullable=False)
-    # cita_id = db.Column(db.Integer, db.ForeignKey('cita.id'))
+    price = db.Column(db.String(200), unique=False, nullable=False)
+    
 
     def __init__(self, tratamiento_name, descripcion, price):
         self.tratamiento_name = tratamiento_name.strip()
