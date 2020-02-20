@@ -3,6 +3,7 @@ from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from utils import parse_time_of_day
 from datetime import datetime, time
+import json
 db = SQLAlchemy()
 
 class User(db.Model):
@@ -53,29 +54,41 @@ class Doctor(User):
     __tablename_ = 'doctor'
     id = db.Column(db.Integer, primary_key=True)
     certificado = db.Column(db.String(250), unique=False, nullable=False)
-    citas = db.relationship('Cita', backref='doctor', lazy=True)
+    # citas = db.relationship('Cita', backref='doctor', lazy=True)
 
-    def __init__(self, name, lastname, email, phone, cedula):
+    def __init__(self, name, lastname, email, phone, cedula, password, certificado):
         self.name = name.strip()
         self.lastname = lastname.strip()
         self.email = email.strip()
         self.phone = phone.strip()
         self.cedula = cedula.strip()
+        self.password = password.strip()
+        self.certificado = certificado.strip()
 
 class Cita(db.Model):
     __tablename__ = "cita"
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Date, unique=False, nullable=False)
+    planned_date = db.Column(db.Date, unique=False, nullable=False)
     state = db.Column(db.Boolean)
-    price_tot = db.Column(db.Integer, unique=False, nullable=False)
+    # price_tot = db.Column(db.Integer, unique=False, nullable=False)
     paciente_id = db.Column(db.Integer, db.ForeignKey('paciente.id'))
-    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'))
-    tratamientos = db.relationship('Tratamiento', backref='cita', lazy=True)
+    # doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'))
+    tratamiento_id = db.Column(db.Integer, db.ForeignKey("tratamiento.id"))
 
-    def __init__(self, date, state, price_tot):
-        self.date = date.strip()
-        self.state = state.strip()
-        self.price_tot = price_tot.strip()
+    def __init__(self, paciente_id, planned_date, state, tratamiento_id):
+        self.paciente_id = paciente_id.strip()
+        self.state = json.loads(state)
+        self.planned_date = datetime.strptime(planned_date, "%Y/%m/%d")
+        self.tratamiento_id = tratamiento_id
+    
+    def serialize(self):
+        return{
+            "id": self.id,
+            "plannedDate": self.planned_date.isoformat(),
+            "state": self.state,
+            "pacienteId": self.paciente_id,
+            "tratamientoId": self.tratamiento_id
+        }
 
 class Tratamiento(db.Model):
     __tablename__ = 'tratamiento'
@@ -83,12 +96,21 @@ class Tratamiento(db.Model):
     tratamiento_name = db.Column(db.String(125), unique=True, nullable=False)
     descripcion = db.Column(db.String(500), unique=True, nullable=True)
     price = db.Column(db.String(200), unique=False, nullable=False)
-    
+    citas = db.relationship("Cita", backref="tratamiento")   
 
     def __init__(self, tratamiento_name, descripcion, price):
         self.tratamiento_name = tratamiento_name.strip()
         self.descripcion = descripcion.strip()
         self.price = price.strip()
+#serialize
+    def serialize(self):
+        return{
+            "id": self.id,
+            "tratamientoName": self.tratamiento_name,
+            "descripcion": self.descripcion,
+            "price": self.price,
+          
+        }
 
 # class Person(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)

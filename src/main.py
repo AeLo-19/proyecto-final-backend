@@ -110,8 +110,72 @@ def handle_register():
         headers
     )
 
-@app.route("/<user_id>/cita", methods=["POST", "GET"])
-def handle_cita(user_id):
+@app.route("/register/doctor", methods=["POST"])
+def handle_register_doctor():
+    headers = {
+        "Content-Type": "application/json"
+    }
+    # creating_user = Paciente.query.filter_by(email=email, cedula=cedula).all()
+    if request.json:
+
+        new_doctor_data = request.json
+
+        if set(("dr_name", "dr_lastname", "dr_email", "dr_password", "dr_date_of_birth", "dr_phone", "dr_cedula", "certificado")).issubset(new_doctor_data):
+
+            if validate_email_syntax(new_doctor_data["dr_email"]):
+
+                new_doctor = Doctor(new_doctor_data["dr_name"], new_doctor_data["dr_lastname"], new_doctor_data["dr_email"], new_doctor_data["dr_phone"], new_doctor_data["dr_cedula"], new_doctor_data["dr_password"], new_doctor_data["certificado"])
+
+                if new_doctor.set_birth_date(new_doctor_data["dr_date_of_birth"]):
+                    db.session.add(new_doctor)
+                    try:
+                        db.session.commit()
+                        status_code = 201
+                        result = f"{new_doctor.name} has sido registrado de forma efectiva con el correo {new_doctor.email}"
+                        response_body = {
+                            "result": result
+                        }
+                    except IntegrityError:
+                        db.session.rollback()
+                        status_code = 400
+                        result = "HTTP_400_BAD_REQUEST. The email is taken"
+                        response_body = {
+                            "result": result
+                        }
+                else:
+                    status_code = 400
+                    if new_user_data["dr_password"]:
+                        response_body = {
+                            "result": "HTTP_400_BAD_REQUEST. Check your date of birth"
+                        }
+                    else:
+                        response_body = {
+                            "result": "HTTP_400_BAD_REQUEST. Password is empty"
+                        }
+            else:
+                status_code = 400
+                response_body = {
+                    "result": "HTTP_400_BAD_REQUEST. Check the email"
+                }
+        else:
+            status_code = 400
+            response_body = {
+                "result": "HTTP_400_BAD_REQUEST. check your input"
+            }
+    else:
+        status_code = 400
+        response_body = {
+            "result": "HTTP_400_BAD_REQUEST. no json data to register"
+        }
+    return make_response (
+        json.dumps(response_body),
+        status_code,
+        headers
+    )
+@app.route("/citas", methods=["GET"])
+@app.route("/user/<user_id>/citas", methods=["GET", "POST"])
+@app.route("/user/<user_id>/citas/<cita_id>", methods=["POST", "GET", "PUT"])
+def handle_cita(user_id=None, cita_id=None):
     headers = {
         "Content-Type": "application/json"
     }
@@ -119,11 +183,13 @@ def handle_cita(user_id):
         new_cita_data = request.json
         if set(("date", "state", "tratamiento_value")).issubset(new_cita_data):
 
+            new_cita_paciente_id = user_id
             new_cita_date = new_cita_data["date"]
-            # new_cita_state = new_cita_data["state"]   new_cita_state != ""  new_cita_state
+            new_cita_state = new_cita_data["state"]
             new_cita_tratamiento = new_cita_data["tratamiento_value"]
-            if (new_cita_date != "" and  and new_cita_tratamiento != "" ):
-                new_cita = Cita(new_cita_date,, new_cita_tratamiento)
+            print(f"este es tratamiento: {type(new_cita_tratamiento)}")
+            if (len(new_cita_date) > 0 and new_cita_tratamiento > 0):
+                new_cita = Cita(new_cita_paciente_id, new_cita_date, new_cita_state, new_cita_tratamiento)
 
                 db.session.add(new_cita)
                 try:
@@ -148,7 +214,74 @@ def handle_cita(user_id):
             status_code = 400
             response_body = {
                 "resultado": "HTTP_400_BAD_REQUEST. some key is empty"
-            } 
+            }
+    elif request.method == "GET":
+        if user_id:
+            specific_user_citas = Cita.query.filter_by(paciente_id=user_id).all()
+            response_body = []
+            for cita in specific_user_citas:
+                response_body.append(cita.serialize())
+        elif cita_id:
+            specific_user_and_cita = Cita.query.filter_by(paciente_id=user_id, id=cita_id).one_or_none()
+            response_body = []
+            for cita in specific_user_and_cita:
+                response_body.append(cita.serialize())
+        else:
+            users_citas = Cita.query.filter_by(state=False).all()
+            response_body = []
+            for cita in users_citas:
+                response_body.append(cita.serialize())
+        
+        status_code = 200 
+    elif request.method == "PUT":
+    
+        edit_cita_data = request.json
+
+        
+        if set(("date", "state", "tratamiento_value")).issubset(edit_cita_data):
+            print("entré aquí")  
+            if cita_id:
+                cita_to_edit = Cita.query.filter_by(id=cita_id).all()
+                if cita_to_edit:
+                    cita_to_edit.update(edit_cita_data)
+                    try:
+                        db.session.commit()
+                        status_code = 200
+                        response_body = {
+                            "result": "HTTP_200_OK. La cita ha sido actualizada"
+                        }
+                    except: 
+                        status_code = 400
+                        response_body = {
+                            "result": "HTTP_400_BAD_REQUEST.  No estoy funcionando"
+                        }
+                else: 
+                    status_code = 404
+                    response_body = {
+                        "result": "HTTP_404_NOT_FOUND. no existe esa cita..."
+                    }
+            else:
+                status_code = 500
+                response_body = {
+                    "result": "HTTP_500_INTERNAL_SERVER_ERROR. cita_id is not in the url"
+                }
+        else:
+            status_code = 400
+            response_body = {
+                "result": "HTTP_BAD_REQUEST. data input invalid for cita update"
+            }
+
+    else:
+        status_code = 400
+        response_body = {
+            "result": "HTTP_400_BAD_REQUEST. no json data to register"
+        }
+    return make_response (
+        json.dumps(response_body),
+        status_code,
+        headers
+    )
+
 
 @app.route("/tratamiento", methods=["POST", "GET"])
 def handle_tratamiento():
@@ -185,6 +318,14 @@ def handle_tratamiento():
                 response_body = {
                     "result": "HTTP_400_BAD_REQUEST. Algun input se encuentra vacío"
                 }
+
+    elif request.method == "GET":
+        tratamientos = Tratamiento.query.all()
+        response_body = []
+        for tratamiento in tratamientos:
+            response_body.append(tratamiento.serialize())
+        status_code = 200 
+
     else: 
         status_code = 400
         response_body = {
