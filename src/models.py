@@ -90,6 +90,12 @@ class Cita(db.Model):
             "tratamientoId": self.tratamiento_id
         }
 
+    def update(self, json_data):
+        self.state = bool(json_data["state"])
+        self.planned_date = json_data["date"]
+        self.tratamiento_id = json_data["tratamiento_value"]
+        #.strptime(planned_date, "%Y/%m/%d")
+
 class Tratamiento(db.Model):
     __tablename__ = 'tratamiento'
     id = db.Column(db.Integer, primary_key=True)
@@ -109,8 +115,9 @@ class Tratamiento(db.Model):
             "tratamientoName": self.tratamiento_name,
             "descripcion": self.descripcion,
             "price": self.price,
-          
         }
+    
+
 
 # class Person(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)

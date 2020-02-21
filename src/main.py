@@ -174,7 +174,7 @@ def handle_register_doctor():
     )
 @app.route("/citas", methods=["GET"])
 @app.route("/user/<user_id>/citas", methods=["GET", "POST"])
-@app.route("/user/<user_id>/citas/<cita_id>", methods=["POST", "GET", "PUT"])
+@app.route("/user/<user_id>/citas/<cita_id>", methods=["POST", "GET", "PUT", "DELETE"])
 def handle_cita(user_id=None, cita_id=None):
     headers = {
         "Content-Type": "application/json"
@@ -234,27 +234,27 @@ def handle_cita(user_id=None, cita_id=None):
         
         status_code = 200 
     elif request.method == "PUT":
-    
+
         edit_cita_data = request.json
 
         
         if set(("date", "state", "tratamiento_value")).issubset(edit_cita_data):
             print("entré aquí")  
             if cita_id:
-                cita_to_edit = Cita.query.filter_by(id=cita_id).all()
+                cita_to_edit = Cita.query.filter_by(id=cita_id).first()
                 if cita_to_edit:
                     cita_to_edit.update(edit_cita_data)
-                    try:
-                        db.session.commit()
-                        status_code = 200
-                        response_body = {
-                            "result": "HTTP_200_OK. La cita ha sido actualizada"
-                        }
-                    except: 
-                        status_code = 400
-                        response_body = {
-                            "result": "HTTP_400_BAD_REQUEST.  No estoy funcionando"
-                        }
+                    # try:
+                    db.session.commit()
+                    status_code = 200
+                    response_body = {
+                        "result": "HTTP_200_OK. La cita ha sido actualizada"
+                    }
+                    # except: 
+                    #     status_code = 400
+                    #     response_body = {
+                    #         "result": "HTTP_400_BAD_REQUEST.  No estoy funcionando"
+                    #     }
                 else: 
                     status_code = 404
                     response_body = {
@@ -270,12 +270,27 @@ def handle_cita(user_id=None, cita_id=None):
             response_body = {
                 "result": "HTTP_BAD_REQUEST. data input invalid for cita update"
             }
+    
+    elif request.method == "DELETE":
+        if cita_id:
+            cita_to_delete = Cita.query.filter_by(id=cita_id).one_or_none()
+            if cita_to_delete:
+                db.session.delete(cita_to_delete)
+                db.session.commit()
+                status_code = 204
+                response_body = {}
+            else:
+                status_code = 404
+                response_body= {
+                    "result": "HTTP_404_NOT_FOUND. esa cita no existe "
+                }
+        else:
+            status_code = 500
+            response_body = {
+                "result": "HTTP_500_INTERNAL_SERVER_ERROR. fallo en la ruta de flask"
+            }
 
-    else:
-        status_code = 400
-        response_body = {
-            "result": "HTTP_400_BAD_REQUEST. no json data to register"
-        }
+    
     return make_response (
         json.dumps(response_body),
         status_code,
@@ -318,6 +333,11 @@ def handle_tratamiento():
                 response_body = {
                     "result": "HTTP_400_BAD_REQUEST. Algun input se encuentra vacío"
                 }
+        else:
+            status_code = 400
+            response_body = {
+                "result": "HTTP_400_BAD_REQUEST. no json data to register"
+            }
 
     elif request.method == "GET":
         tratamientos = Tratamiento.query.all()
