@@ -20,32 +20,57 @@ db.init_app(app)
 CORS(app)
 
 @app.route("/login", methods=["POST"])
-def handle_login(email, password):
+def handle_login():
     headers = {
         "Content-Type": "application/json"
     }
-    requesting_login_paciente = Paciente.query.filter_by(email=email, password=password).all()
-    requesting_login_doctor = Doctor.query.filter_by(email=email, password=password).all()
-    if request.method == "POST":
-        print("Hola estoy empezando a hacer la consulta!")
-        if len(requesting_login_doctor) > 0:
-            print("El perfil si existe! puede seguir")
-            response_body = {
-                "status": "HTTP_200_OK. Adelante."
-            }
-            status_code = 200
-        elif len(requesting_login_paciente) > 0:
-            print("El perfil si existe! puede seguir")
-            response_body = {
-                "status": "HTTP_200_OK. Adelante."
-            }
-            status_code = 200
+    if request.json:
+        login_data = request.json
+
+        if set(("correo", "clave")).issubset(login_data):
+            correo_login = login_data["correo"]
+            clave_login = login_data["clave"]
+
+            requesting_login_paciente = Paciente.query.filter_by(email=correo_login, password=clave_login).all()
+            requesting_login_doctor = Doctor.query.filter_by(email=correo_login, password=clave_login).all()
+
+    
+            if request.method == "POST":
+                print("Hola estoy empezando a hacer la consulta!")
+                if len(requesting_login_doctor) > 0:
+                    print("El perfil si existe! puede seguir")
+                    response_body=[]
+                    for doctor in requesting_login_doctor:
+                        response_body.append(doctor.login())
+                    status_code = 200
+                elif len(requesting_login_paciente) > 0:
+                    print("El perfil si existe! puede seguir")
+                    response_body = []
+                    for paciente in requesting_login_paciente:
+                        response_body.append(paciente.login())
+                    status_code = 200
+                else:
+                    print("El perfil no existe por favor revise los datos")
+                    response_body={
+                        "status": "HTTP_404_NOT_FOUND. El perfil no se encuantra registrado"
+                    }
+                    status_code = 404
         else:
-            print("El perfil no existe por favor revise los datos")
-            response_body={
-                "status": "HTTP_404_NOT_FOUND. El perfil no se encuantra registrado"
-            }
             status_code = 400
+            result = f"HTTP_400_BAD_REQUEST. Some input is empty. {request.json}"
+            response_body = {
+                "result": result
+            }
+    else:
+        status_code = 401
+        response_body= {
+            "result": "HTTP_401_BAD_REQUEST. No json data to login"
+        }
+    return make_response (
+        json.dumps(response_body),
+        status_code,
+        headers
+    )
 
 @app.route("/register", methods=["POST"])
 def handle_register():
@@ -81,9 +106,12 @@ def handle_register():
                         }
                 else:
                     status_code = 400
+                    response_body = {
+                        "result": "HTTP_400_BAD_REQUEST. date of birth is bad"
+                    }
                     if new_user_data["password"]:
                         response_body = {
-                            "result": "HTTP_400_BAD_REQUEST. Check your sate of birth"
+                            "result": "HTTP_400_BAD_REQUEST. Check your date of birth"
                         }
                     else:
                         response_body = {
@@ -100,7 +128,7 @@ def handle_register():
                 "result": "HTTP_400_BAD_REQUEST. check your input"
             }
     else:
-        tatus_code = 400
+        status_code = 400
         response_body = {
             "result": "HTTP_400_BAD_REQUEST. no json data to register"
         }
@@ -172,6 +200,7 @@ def handle_register_doctor():
         status_code,
         headers
     )
+
 @app.route("/citas", methods=["GET"])
 @app.route("/user/<user_id>/citas", methods=["GET", "POST"])
 @app.route("/user/<user_id>/citas/<cita_id>", methods=["POST", "GET", "PUT", "DELETE"])
@@ -184,13 +213,13 @@ def handle_cita(user_id=None, cita_id=None):
         if set(("date", "state", "tratamiento_value")).issubset(new_cita_data):
 
             new_cita_paciente_id = user_id
-            new_cita_date = new_cita_data["date"]
             new_cita_state = new_cita_data["state"]
+            new_cita_date = new_cita_data["date"]
             new_cita_tratamiento = new_cita_data["tratamiento_value"]
             print(f"este es tratamiento: {type(new_cita_tratamiento)}")
-            if (len(new_cita_date) > 0 and new_cita_tratamiento > 0):
+            if (new_cita_tratamiento > 0):
                 new_cita = Cita(new_cita_paciente_id, new_cita_date, new_cita_state, new_cita_tratamiento)
-
+                # if new_cita.correction_date(new_cita_data["date"]):
                 db.session.add(new_cita)
                 try:
                     db.session.commit()
@@ -205,6 +234,11 @@ def handle_cita(user_id=None, cita_id=None):
                     response_body = {
                         "result": "Algo ha salido mal."
                     }
+                # else:
+                #     status_code = 400
+                #     response_body = {
+                #         "result": "HTTP_400_BAD_REQUEST. date is not accepted"
+                #     }                
             else:
                 status_code = 400
                 response_body = {
@@ -297,9 +331,9 @@ def handle_cita(user_id=None, cita_id=None):
         headers
     )
 
-
+@app.route("/tratamiento/<tratamiento_id>", methods=["GET"])
 @app.route("/tratamiento", methods=["POST", "GET"])
-def handle_tratamiento():
+def handle_tratamiento(tratamiento_id=None):
     headers ={
         "Content-Type": "application/json"
     }
@@ -340,16 +374,23 @@ def handle_tratamiento():
             }
 
     elif request.method == "GET":
-        tratamientos = Tratamiento.query.all()
-        response_body = []
-        for tratamiento in tratamientos:
-            response_body.append(tratamiento.serialize())
-        status_code = 200 
+        if tratamiento_id:
+            especific_tratamiento = Tratamiento.query.filter_by(id=tratamiento_id).first
+            response_body = especific_tratamiento
+            status_code = 200
+        else:
+            tratamientos = Tratamiento.query.all()
+            response_body = []
+            for tratamiento in tratamientos:
+                response_body.append(tratamiento.serialize())
+            status_code = 200
+    
+     
 
     else: 
-        status_code = 400
+        status_code = 500
         response_body = {
-            "result": "HTTP_400_BAD_REQUEST. no json data to register"
+            "result": "HTTP_500."
         }
     return make_response(
         json.dumps(response_body),
@@ -357,7 +398,30 @@ def handle_tratamiento():
         headers
     )
 
-
+@app.route("/paciente/<paciente_id>", methods=["GET"])
+def handle_info_paciente(paciente_id=None):
+    if request.method == "GET":
+        if paciente_id:
+            info_paciente = Paciente.query.filter_by(id=paciente_id).one_or_none()
+            response_body = []
+            response_body.append(info_paciente.informacion())
+            status_code = 200
+        else:
+            pacientes = Paciente.query.all()
+            response_body = []
+            for paciente in pacientes:
+                response_body.append(paciente.informacion())
+            status_code = 200
+    else: 
+        status_code = 500
+        response_body = {
+            "result": "HTTP_500."
+        }
+    return make_response(
+        json.dumps(response_body),
+        status_code,
+        headers
+    )
 
 
 # Handle/serialize errors like a JSON object

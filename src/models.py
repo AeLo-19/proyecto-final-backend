@@ -36,7 +36,7 @@ class User(db.Model):
     
     
 class Paciente(User) :
-    __tablename_ = 'paciente'
+    __tablename__ = 'paciente'
     id = db.Column(db.Integer, primary_key=True)
     citas = db.relationship('Cita', backref='paciente', lazy=True)
 
@@ -47,6 +47,19 @@ class Paciente(User) :
         self.password = password.strip()
         self.phone = phone.strip()
         self.cedula = cedula.strip()
+
+    def informacion (self):
+        return{
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "phone": self.phone,
+            "cedula": self.cedula,
+            "fechaDeNacimiento": self.date_of_birth
+        }
+    
+    def login (self):
+        return self.id
         
 
 
@@ -64,6 +77,11 @@ class Doctor(User):
         self.cedula = cedula.strip()
         self.password = password.strip()
         self.certificado = certificado.strip()
+    
+    def login (self):
+        return{
+            "id": self.id
+        }
 
 class Cita(db.Model):
     __tablename__ = "cita"
@@ -77,10 +95,14 @@ class Cita(db.Model):
 
     def __init__(self, paciente_id, planned_date, state, tratamiento_id):
         self.paciente_id = paciente_id.strip()
+        self.planned_date = datetime.strptime(planned_date, "%Y-%m-%d")
         self.state = json.loads(state)
-        self.planned_date = datetime.strptime(planned_date, "%Y/%m/%d")
         self.tratamiento_id = tratamiento_id
     
+    # def correction_date (self, planned_date):
+    #     self.planned_date = parse(planned_date)
+        
+
     def serialize(self):
         return{
             "id": self.id,
@@ -108,7 +130,7 @@ class Tratamiento(db.Model):
         self.tratamiento_name = tratamiento_name.strip()
         self.descripcion = descripcion.strip()
         self.price = price.strip()
-#serialize
+
     def serialize(self):
         return{
             "id": self.id,
