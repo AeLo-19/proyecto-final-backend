@@ -375,8 +375,8 @@ def handle_tratamiento(tratamiento_id=None):
 
     elif request.method == "GET":
         if tratamiento_id:
-            especific_tratamiento = Tratamiento.query.filter_by(id=tratamiento_id).first
-            response_body = especific_tratamiento
+            especific_tratamiento = Tratamiento.query.filter_by(id=tratamiento_id).one_or_none()
+            response_body = especific_tratamiento.serialize()
             status_code = 200
         else:
             tratamientos = Tratamiento.query.all()
@@ -400,11 +400,13 @@ def handle_tratamiento(tratamiento_id=None):
 
 @app.route("/paciente/<paciente_id>", methods=["GET"])
 def handle_info_paciente(paciente_id=None):
+    headers = {
+        "Content-Type": "application/json"
+    }
     if request.method == "GET":
         if paciente_id:
             info_paciente = Paciente.query.filter_by(id=paciente_id).one_or_none()
-            response_body = []
-            response_body.append(info_paciente.informacion())
+            response_body = info_paciente.informacion()
             status_code = 200
         else:
             pacientes = Paciente.query.all()

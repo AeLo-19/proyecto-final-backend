@@ -55,7 +55,7 @@ class Paciente(User) :
             "email": self.email,
             "phone": self.phone,
             "cedula": self.cedula,
-            "fechaDeNacimiento": self.date_of_birth
+            "fechaDeNacimiento": self.date_of_birth.strftime("%Y/%m/%d")
         }
     
     def login (self):
